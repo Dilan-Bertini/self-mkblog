@@ -2,6 +2,8 @@
 /dist
 /node_modules
 /build
+build-data/ssh/*
+!build-data/ssh/config
 
 # Logs
 logs

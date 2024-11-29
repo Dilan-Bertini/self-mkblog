@@ -1,0 +1,30 @@
+services:
+  self-mkblog:
+    container_name: self-mkblog
+    build: .
+    env_file: .env
+    environment:
+      # Do not change if you don't know what are you doing!
+      GIT_SSH_COMMAND: 'ssh -i /home/node/.ssh/github -o StrictHostKeyChecking=no'
+    volumes:
+      - shared-html-data:/usr/src/app/data/html
+      - shared-static-data:/usr/src/app/data/static
+      - ./data/hbs:/usr/src/app/data/hbs
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-self-mkblog
+    volumes:
+      - shared-html-data:/usr/src/app/data/html:ro
+      - shared-static-data:/usr/src/app/data/static:ro
+      - ./data/www/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - '8080:80' # Expose nginx on port 8080
+    depends_on:
+      - self-mkblog
+    restart: always
+
+volumes:
+  shared-html-data:
+  shared-static-data:
