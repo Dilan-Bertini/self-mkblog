@@ -21,32 +21,26 @@ export class HbsService {
         this.layoutTemplate = Handlebars.compile(data);
     }
 
-    async injectIndex(title: string, content: string) {
+    async injectIndex(title: string, content: string, commitDate: string) {
         if (!this.indexTemplate)
             await this.loadIndexTemplate();
-
-        // YYYY MM DD 
-        const compileDate = formatDate(new Date());
 
         return this.indexTemplate({
             title,
             content,
-            compileDate,
+            commitDate,
         })
 
     }
 
-    async injectLayout(title: string, content: string) {
+    async injectLayout(title: string, content: string, commitDate: string) {
         if (!this.layoutTemplate)
             await this.loadLayoutTemplate();
-
-        // YYYY MM DD 
-        const compileDate = formatDate(new Date());
 
         return this.layoutTemplate({
             title,
             content,
-            compileDate,
+            commitDate,
         });
     }
 

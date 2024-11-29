@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { existsSync } from "fs";
 import { readdir } from "fs/promises";
-import { join, normalize } from "path";
+import { basename, join, normalize } from "path";
 import execAsync from "../util/exec_async";
 
 @Injectable()
@@ -32,6 +32,42 @@ export class GitService {
             toConvertFiles,
             toDelete,
         }
+    }
+
+    async getLastCommitDate(fileName: string) {
+        const inputFolderPath = this.configService.get('markdown.input');
+        const response = await execAsync(`cd ${inputFolderPath} && git log -1 --format=%cd --date=format-local:"%Y-%m-%d %H:%M:%S" -- ${fileName}`); 
+        return response.stdout;
+    }
+
+    async getIndexData() {
+        const inputFolderPath = this.configService.get('markdown.input');
+        const toConvertFiles = (await readdir(inputFolderPath)).filter(v => v.endsWith('.md'));
+
+        const indexData: Record<string, Array<{title: string, url: string}>> = {};
+
+        for (const file of toConvertFiles) {
+
+            const filename = basename(join(inputFolderPath, file), '.md').toLowerCase().trim();
+            if (filename == 'index') continue;
+            if (filename == '404') continue;
+
+            const title = filename.charAt(0).toUpperCase() + filename.slice(1);
+            const htmlFileName = filename.replace(/[^\w\d]+/gm, '-') + '.html';
+
+            const commitDate = await this.getLastCommitDate(file);
+            // Buld index data
+            if (!(commitDate in indexData))
+                indexData[commitDate] = [];
+            
+            indexData[commitDate].push({
+                title,
+                url: htmlFileName
+            });
+
+        }
+
+        return indexData;
     }
 
 }

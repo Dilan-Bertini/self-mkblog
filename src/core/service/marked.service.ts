@@ -5,6 +5,7 @@ import { marked } from "marked";
 import { basename, dirname, join, normalize } from "path";
 import { GitService } from "./git.service";
 import { HbsService } from "./hbs.service";
+import { formatDate } from "../util/date";
 
 @Injectable()
 export class MarkedService {
@@ -58,6 +59,8 @@ export class MarkedService {
             // If it's index.md or any other type of IndEx.md they will interfere with the actual index page
             if (file.endsWith('index')) return;
 
+            const commitDate = await this.gitService.getLastCommitDate(file);
+            
             // Read the markdown & parse it
             const markdownContent = await readFile(fullPath, 'utf8');
             const htmlContent = await marked.parse(markdownContent);
@@ -69,7 +72,7 @@ export class MarkedService {
             const title = filename.charAt(0).toUpperCase() + filename.slice(1);
 
             // Inject into the layout html template
-            const injectedContent = await this.hbsService.injectLayout(title, htmlContent)
+            const injectedContent = await this.hbsService.injectLayout(title, htmlContent, commitDate)
 
             // Save the compiled HTML to a destination folder
             const outputPath = join(outputFolderPath, htmlFileName);
@@ -80,6 +83,26 @@ export class MarkedService {
         // Copy all the static files
         await this.copyStatic();
 
+        const indexData = await this.gitService.getIndexData();
+
+        const sortedIndexKeys = Object.keys(indexData).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
+        let indexMarkdown = '# Index\n\n';
+        for (const day of sortedIndexKeys) {
+            indexMarkdown += `## ${day}`;
+            for (const file of indexData[day]) {
+                indexMarkdown += `- [${file.title}](/${file.url})\n`;
+            }
+            indexMarkdown += '\n';
+        }
+
+        const htmlIndexDataRaw = await marked.parse(indexMarkdown);
+        const htmlindexData = await this.hbsService.injectIndex("Index", htmlIndexDataRaw, formatDate(new Date()))
+
+        // Save the compiled HTML to a destination folder
+        const outputPath = join(outputFolderPath, 'index.html');
+        await writeFile(outputPath, htmlindexData, 'utf8');
+        console.log(`Compiled and saved: ${outputPath}`);
+        
         return {
             ms: performance.now() - startTime,
             deleted: toDelete,
